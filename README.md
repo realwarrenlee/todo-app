@@ -1,4 +1,4 @@
-# Todo App - ACCAD Capstone Project
+# Todo App
 
 A full-stack CRUD (Create, Read, Update, Delete) application built with Next.js, DynamoDB, and deployed on AWS with CI/CD pipeline.
 
@@ -513,35 +513,3 @@ artillery run load-test.yml
 - **HTTPS**: All traffic encrypted in transit
 - **Input Validation**: Server-side validation for all inputs
 - **Error Handling**: Don't expose sensitive information in errors
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🎓 Learning Outcomes
-
-This capstone project demonstrates proficiency in:
-
-- **Full-Stack Development**: Frontend and backend integration
-- **Cloud Architecture**: AWS services and best practices
-- **DevOps**: CI/CD pipeline implementation
-- **Database Design**: NoSQL database modeling
-- **Containerization**: Docker and container orchestration
-- **Monitoring**: Application observability and alerting
-- **Infrastructure as Code**: CloudFormation templates
-- **Security**: AWS IAM and security best practices
-
-## 📞 Support
-
-For questions or issues:
-- Create an issue in the GitHub repository
-- Review the troubleshooting section
-- Check AWS documentation for service-specific issues
