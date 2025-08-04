@@ -1,0 +1,163 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudWatch monitoring for Todo App'
+
+Parameters:
+  AppRunnerServiceArn:
+    Type: String
+    Description: App Runner service ARN
+  NotificationEmail:
+    Type: String
+    Description: Email address for alerts
+    Default: admin@example.com
+
+Resources:
+  # SNS Topic for alerts
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: todo-app-alerts
+      DisplayName: Todo App Alerts
+
+  # SNS Subscription
+  AlertsSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref AlertsTopic
+      Endpoint: !Ref NotificationEmail
+
+  # CloudWatch Dashboard
+  TodoAppDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: TodoApp-Dashboard
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/AppRunner", "RequestCount", "ServiceName", "${AppRunnerServiceArn}" ],
+                  [ ".", "2xxStatusCount", ".", "." ],
+                  [ ".", "4xxStatusCount", ".", "." ],
+                  [ ".", "5xxStatusCount", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Request Metrics",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/AppRunner", "ResponseTime", "ServiceName", "${AppRunnerServiceArn}" ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Response Time",
+                "period": 300
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 12,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "metrics": [
+                  [ "AWS/AppRunner", "CPUUtilization", "ServiceName", "${AppRunnerServiceArn}" ],
+                  [ ".", "MemoryUtilization", ".", "." ]
+                ],
+                "view": "timeSeries",
+                "stacked": false,
+                "region": "${AWS::Region}",
+                "title": "Resource Utilization",
+                "period": 300
+              }
+            }
+          ]
+        }
+
+  # High Error Rate Alarm
+  HighErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: TodoApp-HighErrorRate
+      AlarmDescription: High error rate detected
+      MetricName: 5xxStatusCount
+      Namespace: AWS/AppRunner
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ServiceName
+          Value: !Ref AppRunnerServiceArn
+      AlarmActions:
+        - !Ref AlertsTopic
+
+  # High Response Time Alarm
+  HighResponseTimeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: TodoApp-HighResponseTime
+      AlarmDescription: High response time detected
+      MetricName: ResponseTime
+      Namespace: AWS/AppRunner
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 2000
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ServiceName
+          Value: !Ref AppRunnerServiceArn
+      AlarmActions:
+        - !Ref AlertsTopic
+
+  # High CPU Utilization Alarm
+  HighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: TodoApp-HighCPU
+      AlarmDescription: High CPU utilization detected
+      MetricName: CPUUtilization
+      Namespace: AWS/AppRunner
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ServiceName
+          Value: !Ref AppRunnerServiceArn
+      AlarmActions:
+        - !Ref AlertsTopic
+
+Outputs:
+  DashboardURL:
+    Description: CloudWatch Dashboard URL
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${TodoAppDashboard}"
+    Export:
+      Name: !Sub "${AWS::StackName}-DashboardURL"
+  
+  AlertsTopicArn:
+    Description: SNS Topic ARN for alerts
+    Value: !Ref AlertsTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-AlertsTopicArn"
