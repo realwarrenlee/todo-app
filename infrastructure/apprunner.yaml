@@ -1,29 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'AWS App Runner service for Todo App'
-
-Parameters:
-  ServiceName:
-    Type: String
-    Default: todo-app-service
-    Description: Name of the App Runner service
-  ECRRepositoryURI:
-    Type: String
-    Description: ECR Repository URI
-  ImageTag:
-    Type: String
-    Default: latest
-    Description: Docker image tag
-  AWSRegion:
-    Type: String
-    Default: us-east-1
-    Description: AWS Region
-  DefaultUserId:
-    Type: String
-    Default: default-user
-    Description: Default user ID for the application
+Description: 'AWS App Runner service for Todo App from GitHub source'
 
 Resources:
-  # App Runner Instance Role
+  # App Runner Instance Role for your application code to access DynamoDB
   AppRunnerInstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -36,73 +15,41 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
-      Policies:
-        - PolicyName: CloudWatchLogsPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                  - logs:DescribeLogStreams
-                Resource: "*"
 
-  # App Runner Access Role
-  AppRunnerAccessRole:
-    Type: AWS::IAM::Role
+  # App Runner Connection to GitHub
+  AppRunnerGitHubConnection:
+    Type: AWS::AppRunner::Connection
     Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: build.apprunner.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
+      ConnectionName: todo-app-connection
+      ProviderType: GITHUB
 
   # App Runner Service
   AppRunnerService:
     Type: AWS::AppRunner::Service
     Properties:
-      ServiceName: !Ref ServiceName
-      SourceConfiguration:
-        ImageRepository:
-          ImageIdentifier: !Sub "${ECRRepositoryURI}:${ImageTag}"
-          ImageConfiguration:
-            Port: '3000'
-            RuntimeEnvironmentVariables:
-              - Name: NODE_ENV
-                Value: production
-              - Name: AWS_REGION
-                Value: !Ref AWSRegion
-              - Name: DEFAULT_USER_ID
-                Value: !Ref DefaultUserId
-          ImageRepositoryType: ECR
-        AutoDeploymentsEnabled: true
+      ServiceName: todo-app-service
       InstanceConfiguration:
         Cpu: 1 vCPU
         Memory: 2 GB
         InstanceRoleArn: !GetAtt AppRunnerInstanceRole.Arn
+      SourceConfiguration:
+        AutoDeploymentsEnabled: true
+        AuthenticationConfiguration:
+          # Use the ARN from the Connection resource created above
+          ConnectionArn: !GetAtt AppRunnerGitHubConnection.ConnectionArn
+        CodeRepository:
+          # Tell App Runner to look for 'apprunner.yaml' in your repo
+          CodeConfiguration:
+            ConfigurationSource: REPOSITORY
+          RepositoryUrl: https://github.com/realwarrenlee/todo-app
+          SourceCodeVersion:
+            Type: BRANCH
+            Value: main
       HealthCheckConfiguration:
-        Protocol: HTTP
-        Path: /
-        IntervalSeconds: 10
-        TimeoutSeconds: 5
-        HealthyThresholdCount: 1
-        UnhealthyThresholdCount: 5
+        Protocol: TCP # Use TCP for port-only checks, which is more reliable at startup
+        Port: '3000'
 
 Outputs:
   AppRunnerServiceUrl:
     Description: App Runner service URL
-    Value: !Sub "https://${AppRunnerService.ServiceUrl}"
-    Export:
-      Name: !Sub "${AWS::StackName}-ServiceUrl"
-  
-  AppRunnerServiceArn:
-    Description: App Runner service ARN
-    Value: !GetAtt AppRunnerService.ServiceArn
-    Export:
-      Name: !Sub "${AWS::StackName}-ServiceArn"
+    Value: !GetAtt AppRunnerService.ServiceUrl
