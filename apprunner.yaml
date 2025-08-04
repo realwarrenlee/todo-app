@@ -5,6 +5,7 @@ build:
     build:
       - echo "Build phase completed"
 run:
+  runtime-version: latest
   command: node server.js
   network:
     port: 3000
@@ -13,4 +14,4 @@ run:
     - name: NODE_ENV
       value: production
     - name: AWS_REGION
-      value: us-east-1
+      value: ap-southeast-1
